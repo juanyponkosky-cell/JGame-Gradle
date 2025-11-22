@@ -1,30 +1,40 @@
 plugins {
     id 'application'
-    id 'distribution' // Lo mantendremos ya que lo tenías, pero el 'jar' block es lo que genera el ejecutable standalone
+    id 'distribution' // Para crear los ZIP/TAR de distribución
 }
 
-// Solo creara ZIP para distribucion de la app
-tasks.distTar.enabled = false // Mantener si no quieres la tarball
+// *** 1. ARREGLO PERMANENTE DE VERSIÓN DE JAVA ***
+// Esto le dice a Gradle que use Java 17 para compilar.
+// Ahora el IDE te va a hacer caso siempre.
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+// Opciones de compilación (mejor ponerlas aquí afuera)
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
 
 repositories {
     mavenCentral()
     flatDir {
-        dirs 'lib' // Asume que 'bucleJuego.jar' está en la carpeta 'lib' en la raíz del proyecto
+        dirs 'lib' // Carga tu librería 'bucleJuego.jar' (JGame) desde la carpeta 'lib'
     }
 }
 
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
 
-    // Asumimos que bucleJuego.jar es tu JGame Framework
+    // Tu librería JGame
     implementation name: 'bucleJuego'
 
-    // Si estás usando sqlite-jdbc en alguno de tus juegos, mantén esta dependencia
+    // La librería de base de datos (si la usás)
     implementation 'org.xerial:sqlite-jdbc:3.45.3.0'
 }
 
 application {
-    // *** CAMBIO CRÍTICO 1: Define la clase principal para el lanzador ***
+    // Esto está perfecto, le dice a 'gradlew run' qué clase ejecutar
     mainClass = 'jgame.gradle.LanzadorJuegos'
 }
 
@@ -32,67 +42,47 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-/*
-* El bloque `copyConfig` no es estrictamente necesario para el JAR ejecutable principal
-* si tus recursos ya están en src/main/resources. Pero si tienes archivos
-* específicos que necesitan ir a esas rutas después de la compilación/build,
-* déjalo. Si no estás seguro o no lo usas, puedes comentarlo o eliminarlo
-* para simplificar.
-*/
-tasks.register("copyConfig") {
+// *** 2. ARREGLO PARA JGame.properties ***
+// La librería JGame (bucleJuego) busca el archivo .properties en un
+// lugar no-estándar (build/classes/java/main) en vez de (build/resources/main).
+// Esta tarea COPIA el archivo desde 'src/main/resources' (donde SÍ está)
+// al lugar donde la librería lo espera.
+tasks.register("copyPropertiesParaJGame", Copy) {
     group = "Other"
-    description = "Copia Archivos de Configuracion"
-    doFirst {
-        println 'Copiando archivos de configuración...'
-        copy {
-            from("src/main/config")
-            into 'build/classes/java/main/'
-        }
-        copy {
-            from("src/main/config")
-            into 'build/distributions' // Esto se copia cuando se crea un ZIP/TAR de distribución
-        }
-    }
+    description = "Copia jgame.properties al directorio de clases para JGame."
+    from 'src/main/resources'
+    into 'build/classes/java/main'
+    include 'jgame.properties' // Solo copia ese archivo
 }
 
+// Le decimos a Gradle que 'run' (y 'build') depende de que esta copia se haga PRIMERO.
+tasks.named("run") {
+    dependsOn "copyPropertiesParaJGame"
+}
 tasks.named("build") {
-    finalizedBy("copyConfig") // Asegura que copyConfig se ejecute después de build
+    dependsOn "copyPropertiesParaJGame"
 }
 
+
+// --- RESTO DE LA CONFIGURACIÓN ---
 jar {
     archiveVersion = '0.0.1' // Versión del JAR
 
-    // *** CAMBIO CRÍTICO 2: Incluir todas las dependencias en el JAR (crear un "fat JAR") ***
-    // Esto asegura que `bucleJuego.jar` y `sqlite-jdbc` estén dentro de tu JAR principal.
+    // Esto crea el "Fat JAR" (un solo .jar con todas las librerías adentro)
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
-
-    // *** CAMBIO CRÍTICO 3: Asegura que el manifiesto apunte al LanzadorJuegos ***
+    
+    // El "manifiesto" (la etiqueta) que dice dónde está el main
     manifest {
         attributes 'Main-Class': 'jgame.gradle.LanzadorJuegos',
                    'Implementation-Title': 'POO Juego',
                    'Implementation-Version': archiveVersion.get()
     }
-    
-    // Este bloque `into 'resources'` ya no es estrictamente necesario
-    // porque `src/main/resources` se copia automáticamente al JAR
-    // y el `from { configurations.runtimeClasspath ... }` ya incluye todo el classpath.
-    // Pero si lo dejas, no causará daño.
-    // into('resources') {
-    //     from 'resources' // Asumiendo que esta es la ruta a src/main/resources
-    // }
+
+    // Evita errores si hay archivos duplicados en las librerías
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-// Este bloque de `distributions` es para crear paquetes ZIP/TAR completos.
-// El `jar` de arriba ya crea tu JAR ejecutable autónomo.
-distributions {
-    main {
-        contents {
-            from 'src/main/config/jgame.properties' // Copia este archivo a la raíz de la distribución
-        }
-    }
-    tasks.withType(JavaCompile) {
-        options.encoding = 'UTF-8'
-    }
-}
+// Solo creará ZIP para distribucion de la app
+tasks.distTar.enabled = false
