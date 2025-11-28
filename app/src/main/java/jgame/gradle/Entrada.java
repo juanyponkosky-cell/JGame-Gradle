@@ -1,9 +1,9 @@
 package jgame.gradle;
 
 import java.awt.Graphics2D;
-import java.io.IOException;
+//import java.io.IOException;
 import java.util.List;
-import javax.imageio.ImageIO;
+//import javax.imageio.ImageIO;
 
 public class Entrada extends ObjetoGrafico {
 

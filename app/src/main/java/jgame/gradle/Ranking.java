@@ -6,21 +6,45 @@ import java.util.*;
 
 public class Ranking {
 
-    private static final String ARCHIVO = "datos/ranking.txt";
+    private static final String CARPETA = "datos";
+    private static final String ARCHIVO = CARPETA + "/ranking.txt";
 
     public static void guardar(String nombre, int nivel, int puntaje) {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(ARCHIVO, true))) {
-            String fecha = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date());
-            pw.println(nombre + "," + nivel + "," + puntaje + "," + fecha);
+        try {
+            // 1. Crear carpeta si no existe
+            File dir = new File(CARPETA);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            // 2. Crear el archivo si no existe
+            File file = new File(ARCHIVO);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+
+            // 3. Escribir datos
+            try (PrintWriter pw = new PrintWriter(new FileWriter(file, true))) {
+                String fecha = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date());
+                pw.println(nombre + "," + nivel + "," + puntaje + "," + fecha);
+            }
+
         } catch (IOException e) {
-            System.out.println("Error al guardar el ranking: " + e.getMessage());
+            System.out.println("❌ Error al guardar el ranking: " + e.getMessage());
         }
     }
 
     public static ArrayList<EntradaRanking> obtenerTop(int cantidad) {
         ArrayList<EntradaRanking> lista = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(ARCHIVO))) {
+
+        File file = new File(ARCHIVO);
+        if (!file.exists()) {
+            return lista;
+        }
+
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String linea;
+
             while ((linea = br.readLine()) != null) {
                 String[] partes = linea.split(",");
                 if (partes.length >= 4) {
@@ -32,14 +56,14 @@ public class Ranking {
                 }
             }
         } catch (IOException e) {
-            // archivo no existe
+            System.out.println("❌ Error al leer ranking: " + e.getMessage());
         }
 
         lista.sort((a, b) -> Integer.compare(b.puntaje, a.puntaje));
+
         return new ArrayList<>(lista.subList(0, Math.min(cantidad, lista.size())));
     }
 
-    // 🔽 Clase interna para entrada del ranking
     public static class EntradaRanking {
         public final String nombre;
         public final int nivel;

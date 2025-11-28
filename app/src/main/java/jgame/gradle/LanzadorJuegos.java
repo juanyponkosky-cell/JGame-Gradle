@@ -6,7 +6,7 @@ import javax.swing.*;
 // Importamos la librería JGame (para el campo 'juego')
 import com.entropyinteractive.JGame;
 // Importamos nuestras clases de la refactorización
-import jgame.gradle.abstractas.Juego;
+//import jgame.gradle.abstractas.Juego;
 
 public class LanzadorJuegos extends JPanel {
 
