@@ -28,7 +28,7 @@ public class Salida {
         for (int i = 0; i < lemmings.size(); i++) {
             Lemming l = lemmings.get(i);
             if (l.getEstado() != Lemming.Estado.MUERTO
-                    && zona.contains(l.getCentroX(), l.getCentroY())) {
+                    && zona.contains(l.getX(), l.getY())) {
                 lemmings.remove(i);
                 if (configuracion.isEfectosActivados()) {
                     Sonido.reproducir("YIPPEE.wav");

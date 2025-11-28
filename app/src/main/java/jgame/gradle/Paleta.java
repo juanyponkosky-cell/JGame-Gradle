@@ -1,32 +1,53 @@
 package jgame.gradle;
+
 import java.awt.*;
 
-public class Paleta extends ObjetoGrafico implements ObjetoMovible{
+public class Paleta extends ObjetoGrafico implements ObjetoMovible {
 
-    private int alto;
     private int ancho;
+    private int alto;
+    private int maxWidth;
+    private int maxHeight;
 
-    public Paleta(String filename,int ancho, int alto) {
-        super(filename);
-        this.ancho=ancho;
-        this.alto=alto;
+    public Paleta(int ancho, int alto, int maxWidth, int maxHeight) {
+        super(null); // No usamos imagen
+        this.ancho = ancho;
+        this.alto = alto;
+        this.maxWidth = maxWidth;
+        this.maxHeight = maxHeight;
     }
 
     @Override
     public void update(double delta) {
-
-        // Si choca contra el borde de abajo: 
-        if ((positionY+ (this.getHeight())) > this.alto+10) {
-			positionY = this.alto +10 - (this.getHeight());
-		}
-
-        // Si choca contra el borde de arriba
-        if ((positionY) < 30) {
-			positionY = 30;
-		}
+        // Limite inferior
+        if (positionY + alto > maxHeight - 10) {
+            positionY = maxHeight - 10 - alto;
+        }
+        // Limite superior
+        if (positionY < 30) {
+            positionY = 30;
+        }
     }
-    
+
+    @Override
     public void display(Graphics2D g2) {
-       g2.drawImage(imagen,(int) this.positionX,(int) this.positionY,null);
+        g2.setColor(Color.WHITE);
+        g2.fillRect(
+            (int) positionX,
+            (int) positionY,
+            ancho,
+            alto
+        );
+    }
+
+    // Ahora los bordes son correctos para colisiones
+    @Override
+    public Rectangle getBordes() {
+        return new Rectangle(
+            (int) positionX,
+            (int) positionY,
+            ancho,
+            alto
+        );
     }
 }

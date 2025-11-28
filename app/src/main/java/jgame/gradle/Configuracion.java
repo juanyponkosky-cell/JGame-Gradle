@@ -2,14 +2,21 @@ package jgame.gradle;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
-import com.entropyinteractive.Keyboard;
+import com.entropyinteractive.Keyboard; 
 
+/**
+ * Clase de configuración del juego.
+ * Compatible con Java 5+ para soportar la librería JGame antigua.
+ */
 public class Configuracion {
 
     private boolean musicaActivada = true;
-    public  boolean efectosActivados = true;
-    public boolean pantallaCompleta = false;
+    private boolean efectosActivados = true;
+    private boolean pantallaCompleta = false;
 
+    // -------------------------
+    //      GETTERS
+    // -------------------------
     public boolean isMusicaActivada() {
         return musicaActivada;
     }
@@ -18,6 +25,13 @@ public class Configuracion {
         return efectosActivados;
     }
 
+    public boolean isPantallaCompleta() {
+        return pantallaCompleta;
+    }
+
+    // -------------------------
+    //      MÉTODOS TOGGLE
+    // -------------------------
     public void alternarMusica() {
         musicaActivada = !musicaActivada;
     }
@@ -26,50 +40,63 @@ public class Configuracion {
         efectosActivados = !efectosActivados;
     }
 
-    public void actualizarConfiguracion(Keyboard teclado) {
-        // Leemos las teclas presionadas
+    public void alternarPantallaCompleta() {
+        pantallaCompleta = !pantallaCompleta;
+    }
+
+    // ---------------------------------------------------
+    //           LEER TECLADO Y ACTUALIZAR CONFIGS
+    // ---------------------------------------------------
+    public void actualizar(Keyboard teclado) {
+
         for (KeyEvent e : teclado.getEvents()) {
-            if (e.getID() == KeyEvent.KEY_PRESSED) {
-                switch (e.getKeyCode()) {
-                    case KeyEvent.VK_M:
-                        musicaActivada = !musicaActivada;
-                        break;
-                    case KeyEvent.VK_S:
-                        efectosActivados = !efectosActivados;
-                        break;
-                    case KeyEvent.VK_F:
-                        pantallaCompleta = !pantallaCompleta;
-                        break;
-                }
+
+            if (e.getID() != KeyEvent.KEY_PRESSED) {
+                continue;
+            }
+
+            switch (e.getKeyCode()) {
+
+                case KeyEvent.VK_M:
+                    alternarMusica();
+                    break;
+
+                case KeyEvent.VK_S:
+                    alternarEfectos();
+                    break;
+
+                case KeyEvent.VK_F:
+                    alternarPantallaCompleta();
+                    break;
+
+                default:
+                    break;
             }
         }
     }
 
-    public void dibujarPantalla(Graphics2D g) {
+    // ---------------------------------------------------
+    //                DIBUJO DEL MENÚ
+    // ---------------------------------------------------
+    public void dibujar(Graphics2D g, int width, int height) {
+
         // Fondo
         g.setColor(new Color(30, 30, 30));
-        g.fillRect(0, 0, 800, 600);
+        g.fillRect(0, 0, width, height);
 
         // Título
         g.setColor(Color.WHITE);
-        g.setFont(g.getFont().deriveFont(22f));
-        g.drawString("CONFIGURACIÓN DEL JUEGO", 240, 100);
-
-        // Cuadro
-        g.setColor(new Color(50, 50, 50));
-        g.fillRoundRect(200, 140, 400, 300, 20, 20);
-        g.setColor(Color.GRAY);
-        g.drawRoundRect(200, 140, 400, 300, 20, 20);
+        g.setFont(new Font("Arial", Font.BOLD, 26));
+        g.drawString("CONFIGURACIÓN DEL JUEGO", width / 2 - 200, 100);
 
         // Opciones
-        g.setFont(g.getFont().deriveFont(18f));
-        g.setColor(Color.WHITE);
-        g.drawString("M - Música: " + (musicaActivada ? "✔ Activada" : "✘ Desactivada"), 240, 190);
-        g.drawString("S - Efectos: " + (efectosActivados ? "✔ Activados" : "✘ Desactivados"), 240, 230);
-        g.drawString("F - Pantalla completa: " + (pantallaCompleta ? "✔ Activada" : "✘ Desactivada"), 240, 270);
+        g.setFont(new Font("Arial", Font.PLAIN, 20));
+        g.drawString("M - Música: " + (musicaActivada ? "✔ Activada" : "✘ Desactivada"), width / 2 - 160, 170);
+        g.drawString("S - Efectos: " + (efectosActivados ? "✔ Activados" : "✘ Desactivados"), width / 2 - 160, 210);
+        g.drawString("F - Pantalla Completa: " + (pantallaCompleta ? "✔ Activada" : "✘ Desactivada"), width / 2 - 160, 250);
 
-        g.setFont(g.getFont().deriveFont(16f));
-        g.drawString("Presioná ENTER para continuar", 260, 330);
+        // Texto inferior
+        g.setFont(new Font("Arial", Font.PLAIN, 16));
+        g.drawString("Presioná ENTER para continuar", width / 2 - 140, 320);
     }
-
 }
