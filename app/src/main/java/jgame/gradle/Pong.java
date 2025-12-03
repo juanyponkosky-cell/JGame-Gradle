@@ -10,7 +10,7 @@ import jgame.gradle.abstractas.Juego;
 
 import java.awt.*;
 import java.awt.event.*; //eventos
-import java.awt.image.*;  //imagenes
+import java.awt.image.*; //imagenes
 import javax.imageio.*; //imagenes
 import java.util.*;
 import java.io.*;
@@ -24,41 +24,33 @@ public class Pong implements Juego {
     private final int ESTADO_JUGANDO = 1;
     private final int ESTADO_ESPERANDO = 2;
     private final int ESTADO_FIN = 3;
+    private final int ESTADO_CONFIG = -1;
     private final static int HEIGHT = 600;
     private final static int WIDTH = 800;
+
+    private Configuracion configuracion = new Configuracion();
 
     private Paleta paleta1 = new Paleta(20, 120, WIDTH, HEIGHT);
     private Paleta paleta2 = new Paleta(20, 120, WIDTH, HEIGHT);
 
+    private double cooldownRebote = 0;
+
     private PelotaPong pelota = new PelotaPong("imagenes/pelota.png", WIDTH, HEIGHT);
-    //private BufferedImage red = null;
     private BufferedImage pong = null;
     private Rectangle play = new Rectangle(190, 80);
-   // private Rectangle replay = new Rectangle(153, 37);
-
+    
     private int contador1 = 0;
     private int contador2 = 0;
     private int estado;
 
-    // --- Nuevos Atributos ---
     private Keyboard keyboard;
     private Mouse mouse;
     private boolean terminado = false;
 
-    // CAMBIO 2: ¡BORRAMOS EL MAIN!
-    /*
-    public static void main(String[] args) {
-        // ... esto ya no existe ...
-    }
-     */
-    // CAMBIO 3: El constructor se simplifica
     public Pong() {
-        // Ya no llamamos a super("Pong", WIDTH, HEIGHT);
-        // El System.out.println(appProperties...) también vuela
-
-        // La carga de imágenes está perfecta
         try {
-          //  red = ImageIO.read(getClass().getClassLoader().getResourceAsStream("imagenes/red.png"));
+            // red =
+            // ImageIO.read(getClass().getClassLoader().getResourceAsStream("imagenes/red.png"));
             pong = ImageIO.read(getClass().getClassLoader().getResourceAsStream("imagenes/pong0.jpg"));
         } catch (IOException e) {
             System.out.println("ZAS! en ObjectoGrafico " + e);
@@ -71,18 +63,19 @@ public class Pong implements Juego {
         this.keyboard = k;
         this.mouse = m;
 
-        System.out.println("gameStartup (ahora 'iniciar') de Pong");
+        System.out.println("iniciar() de Pong");
         cargarTTF();
-        try {
-            paleta1.setPosition(50, HEIGHT / 2 - 60);
-            paleta2.setPosition(WIDTH - 50 - 20, HEIGHT / 2 - 60);
 
+        try {
+            paleta1.setPosition(50, HEIGHT / 2 - paleta1.getHeight() / 2);
+            paleta2.setPosition(WIDTH - 50, HEIGHT / 2 - paleta2.getHeight() / 2);
             pelota.setPelotaAlCentro();
         } catch (Exception e) {
             System.out.println(e);
         }
 
-        estado = ESTADO_INICIO;
+        // Primero mostramos la pantalla de configuración
+        estado = ESTADO_CONFIG;
     }
 
     // (Este método privado no se toca)
@@ -101,6 +94,20 @@ public class Pong implements Juego {
     @Override
     public void actualizar(double delta) {
         // Ya no hacemos "this.getKeyboard()", usamos las variables guardadas
+        // --- ESTADO CONFIGURACIÓN ---
+
+        if (cooldownRebote > 0) // Rebote cooldown timer, evita spamear el sonido de rebote
+            cooldownRebote -= delta;
+
+        if (estado == ESTADO_CONFIG) {
+            configuracion.actualizar(keyboard); // M/S/F como en Lemmings
+
+            // ENTER para continuar al menú de inicio de Pong
+            if (keyboard.isKeyPressed(KeyEvent.VK_ENTER)) {
+                estado = ESTADO_INICIO;
+            }
+            return; // no seguir con el resto de la lógica
+        }
 
         // Procesar teclas de direccion
         if (this.keyboard.isKeyPressed(KeyEvent.VK_UP)) {
@@ -137,22 +144,28 @@ public class Pong implements Juego {
             }
         }
 
-        // ... (TODA LA LÓGICA DE COLISIONES QUEDA IDÉNTICA) ...
-        // ... (TODA LA LÓGICA DE COLISIONES QUEDA IDÉNTICA) ...
         if (pelota.getBordes().intersects(paleta1.getBordes())) {
-            // ESTAS LÍNEAS FALTABAN
             double centroPaleta = paleta1.positionY + paleta1.getHeight() / 2;
             double desplazamiento = (pelota.positionY + pelota.getHeight() / 2) - centroPaleta;
             pelota.invertVelocityX();
             pelota.setVelocityY(desplazamiento * 0.15);
+
+            if (cooldownRebote <= 0 && configuracion.isEfectosActivados()) {
+                Sonido.reproducir("sonidopong.wav"); // ← usa tu clase Sonido
+                cooldownRebote = 0.08; // evita que suene repetido
+            }
         }
 
         if (pelota.getBordes().intersects(paleta2.getBordes())) {
-            // ESTAS LÍNEAS FALTABAN
             double centroPaleta = paleta2.positionY + paleta2.getHeight() / 2;
             double desplazamiento = (pelota.positionY + pelota.getHeight() / 2) - centroPaleta;
             pelota.invertVelocityX();
             pelota.setVelocityY(desplazamiento * 0.15);
+
+            if (cooldownRebote <= 0 && configuracion.isEfectosActivados()) {
+                Sonido.reproducir("sonidopong.wav");
+                cooldownRebote = 0.08;
+            }
         }
 
         // Gol para jugador 2
@@ -162,7 +175,7 @@ public class Pong implements Juego {
             estado = ESTADO_ESPERANDO;
         }
 
-// Gol para jugador 1
+        // Gol para jugador 1
         if (pelota.positionX > WIDTH - pelota.getSize()) {
             contador1++;
             pelota.setPelotaAlCentro();
@@ -199,6 +212,12 @@ public class Pong implements Juego {
     // CAMBIO 8: Renombramos "gameDraw" a "dibujar"
     @Override
     public void dibujar(Graphics2D g) {
+
+        // --- PANTALLA DE CONFIGURACIÓN ---
+        if (estado == ESTADO_CONFIG) {
+            configuracion.dibujar(g, WIDTH, HEIGHT); // mismo estilo que en Lemmings
+            return;
+        }
 
         // (TODA TU LÓGICA DE DIBUJADO ES PERFECTA Y NO CAMBIA)
         if (estado == ESTADO_INICIO) {

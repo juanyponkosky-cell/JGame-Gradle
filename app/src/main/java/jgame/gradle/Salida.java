@@ -54,12 +54,19 @@ public class Salida {
 
     public void dibujar(Graphics2D g) {
 
-        // Dibuja la salida gráfica
-        spriteSalida.setPosition(zona.x, zona.y);
+        // AJUSTE VISUAL
+        // Probamos con 16 píxeles (medio bloque).
+        // Si sigue muy abajo, aumenta este número (ej. 20).
+        // Si queda flotando, disminúyelo (ej. 10).
+        int offsetLevantar = 16; 
+
+        // Restamos el offset a la Y para que se dibuje más arriba
+        spriteSalida.setPosition(zona.x, zona.y - offsetLevantar);
         spriteSalida.display(g);
 
-        // Dibuja el texto
+        // El texto lo dejamos donde estaba o lo subimos también si tapa el dibujo
         g.setColor(Color.BLACK);
-        g.drawString("Salvados: " + salvados + " / " + objetivo, zona.x - 20, zona.y - 10);
+        // Ajusté un poco la posición del texto para que acompañe
+        g.drawString("Salvados: " + salvados + " / " + objetivo, zona.x - 10, zona.y - offsetLevantar - 5);
     }
 }

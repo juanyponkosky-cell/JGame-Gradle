@@ -89,4 +89,8 @@ public class ObjetoGrafico {
     public double getY(){
         return positionY;
     }
+
+    public BufferedImage getImagen(){
+        return imagen;
+    }
 }

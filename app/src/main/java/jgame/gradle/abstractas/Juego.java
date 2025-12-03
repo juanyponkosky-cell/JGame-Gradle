@@ -5,7 +5,7 @@ import com.entropyinteractive.Keyboard; // Importa esto
 import com.entropyinteractive.Mouse; // Importa esto
 
 public interface Juego {
-    // CAMBIA ESTA LÍNEA
+
     void iniciar(Keyboard k, Mouse m); // Ya no es iniciar()
     
     void actualizar(double delta);

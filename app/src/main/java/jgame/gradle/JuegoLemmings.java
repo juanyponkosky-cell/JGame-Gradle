@@ -1,6 +1,8 @@
 package jgame.gradle;
 
 import jgame.gradle.abstractas.Juego;
+import jgame.gradle.abstractas.Jugador;
+
 import com.entropyinteractive.Keyboard;
 import com.entropyinteractive.Mouse;
 import com.entropyinteractive.Log;
@@ -16,7 +18,7 @@ public class JuegoLemmings implements Juego {
     // ENUMS DE ESTADO Y HABILIDAD
     // -------------------------------
     private enum Habilidad {
-        BLOCKER, FLOATER, EXCAVADOR, BOMBER
+        BLOCKER, FLOATER, EXCAVADOR, BOMBER, ESCALADOR // 👈 NUEVO
     }
 
     private enum EstadoJuego {
@@ -35,6 +37,8 @@ public class JuegoLemmings implements Juego {
     private EstadoJuego estado = EstadoJuego.CONFIGURACION;
     private Habilidad habilidadSeleccionada = Habilidad.BLOCKER;
 
+    private Jugador jugador;
+
     private Entrada entrada;
     private Salida salida;
     private TerrenoMatriz terreno;
@@ -44,7 +48,6 @@ public class JuegoLemmings implements Juego {
     private int nivelActual = 1;
     private boolean mousePresionado = false;
 
-    private String nombreJugador = "";
     private StringBuilder nombreTemporal = new StringBuilder();
 
     private Configuracion configuracion = new Configuracion();
@@ -58,20 +61,13 @@ public class JuegoLemmings implements Juego {
     public JuegoLemmings() {
     }
 
-    // --------------------------------
-    // INICIAR
-    // --------------------------------
     @Override
     public void iniciar(Keyboard k, Mouse m) {
         this.keyboard = k;
         this.mouse = m;
         lemmings = new ArrayList<>();
-        // NO crear entrada/salida aquí
     }
 
-    // --------------------------------
-    // ACTUALIZAR
-    // --------------------------------
     @Override
     public void actualizar(double delta) {
 
@@ -126,25 +122,19 @@ public class JuegoLemmings implements Juego {
         }
     }
 
-    // --------------------------------
-    // DIBUJAR
-    // --------------------------------
     @Override
     public void dibujar(Graphics2D g) {
 
-        // CONFIGURACIÓN
         if (estado == EstadoJuego.CONFIGURACION) {
             configuracion.dibujar(g, 800, 600);
             return;
         }
 
-        // INGRESO DE NOMBRE
         if (estado == EstadoJuego.INGRESANDO_NOMBRE) {
             dibujarPantallaNombre(g);
             return;
         }
 
-        // NIVEL
         terreno.dibujar(g);
 
         if (entrada != null)
@@ -157,7 +147,6 @@ public class JuegoLemmings implements Juego {
 
         dibujarHUD(g);
 
-        // PANTALLAS DE FIN
         if (estado == EstadoJuego.NIVEL_GANADO ||
                 estado == EstadoJuego.NIVEL_PERDIDO ||
                 estado == EstadoJuego.FINALIZADO) {
@@ -190,7 +179,7 @@ public class JuegoLemmings implements Juego {
             salida = terreno.getSalida();
 
             if (entrada == null || salida == null) {
-                throw new RuntimeException("El nivel no tiene entrada o salida en el archivo.");
+                throw new RuntimeException("El nivel no tiene entrada o salida.");
             }
 
             temporizador = new Temporizador(60);
@@ -225,6 +214,9 @@ public class JuegoLemmings implements Juego {
                             case BOMBER:
                                 l.setEstadoBomber();
                                 break;
+                            case ESCALADOR:
+                                l.setEstadoEscalador();
+                                break; // 👈 NUEVO
                         }
 
                         if (configuracion.isEfectosActivados())
@@ -247,24 +239,27 @@ public class JuegoLemmings implements Juego {
         for (KeyEvent e : eventos) {
             if (e.getID() == KeyEvent.KEY_TYPED) {
                 char c = e.getKeyChar();
-                if (Character.isLetterOrDigit(c) || c == ' ') {
+                if (Character.isLetterOrDigit(c) || c == ' ')
                     nombreTemporal.append(c);
-                }
             }
 
             if (e.getID() == KeyEvent.KEY_PRESSED) {
-                if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE && nombreTemporal.length() > 0) {
+                if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE && nombreTemporal.length() > 0)
                     nombreTemporal.deleteCharAt(nombreTemporal.length() - 1);
-                }
 
                 if (e.getKeyCode() == KeyEvent.VK_ENTER && nombreTemporal.length() > 0) {
-                    nombreJugador = nombreTemporal.toString();
+
+                    // Crear el jugador usando la clase Jugador
+                    jugador = Jugador.crear(nombreTemporal.toString());
+
+
                     cargarNivel(nivelActual);
                     estado = EstadoJuego.JUGANDO;
 
                     if (configuracion.isMusicaActivada())
                         Sonido.reproducirLoop("spanish_flea.wav");
                 }
+
             }
         }
     }
@@ -278,17 +273,20 @@ public class JuegoLemmings implements Juego {
             habilidadSeleccionada = Habilidad.EXCAVADOR;
         if (keyboard.isKeyPressed(KeyEvent.VK_4))
             habilidadSeleccionada = Habilidad.BOMBER;
+        if (keyboard.isKeyPressed(KeyEvent.VK_5))
+            habilidadSeleccionada = Habilidad.ESCALADOR; // 👈 NUEVO
     }
 
     private void guardarPuntaje() {
-        int puntaje = salida.getSalvados() * 100 - contarMuertos() * 50;
-        Ranking.guardar(nombreJugador, nivelActual, puntaje);
-    }
+    int puntaje = salida.getSalvados() * 100 - contarMuertos() * 50;
+
+    jugador.sumarPuntos(puntaje);   // <<< NUEVO
+    Ranking.guardar(jugador.getNombre(), nivelActual, puntaje);
+}
+
 
     private void manejarFinDeNivel() {
-        LinkedList<KeyEvent> eventos = keyboard.getEvents();
-        for (KeyEvent e : eventos) {
-
+        for (KeyEvent e : keyboard.getEvents()) {
             if (e.getID() == KeyEvent.KEY_PRESSED &&
                     e.getKeyCode() == KeyEvent.VK_ENTER) {
 
@@ -339,30 +337,24 @@ public class JuegoLemmings implements Juego {
 
     private void dibujarHUD(Graphics2D g) {
 
-        // Fondo elegante del HUD
-        g.setColor(new Color(245, 245, 245, 220)); // Blanco suave con un poco de transparencia
+        g.setColor(new Color(245, 245, 245, 220));
         g.fillRoundRect(0, 550, 800, 50, 20, 20);
 
-        // Borde fino
         g.setColor(new Color(180, 180, 180));
         g.drawRoundRect(0, 550, 800, 50, 20, 20);
 
-        // Título "Habilidad"
         g.setFont(new Font("Arial", Font.BOLD, 14));
         g.setColor(new Color(40, 40, 40));
         g.drawString("Habilidad Seleccionada:", 10, 570);
 
-        // Nombre de habilidad resaltado
         g.setFont(new Font("Arial", Font.BOLD, 16));
-        g.setColor(new Color(30, 100, 200)); // Azul suave
+        g.setColor(new Color(30, 100, 200));
         g.drawString(habilidadSeleccionada.toString(), 180, 570);
 
-        // Lista de teclas
         g.setFont(new Font("Arial", Font.PLAIN, 12));
         g.setColor(new Color(60, 60, 60));
-        g.drawString("1 BLOCKER  |  2 FLOATER  |  3 EXCAVADOR  |  4 BOMBER", 10, 590);
+        g.drawString("1 BLOCKER  |  2 FLOATER  |  3 EXCAVADOR  |  4 BOMBER  |  5 ESCALADOR", 10, 590);
 
-        // Timer alineado a la derecha
         temporizador.dibujar(g);
     }
 
